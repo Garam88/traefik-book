@@ -1,0 +1,25 @@
+http:
+  middlewares:
+    gzip:
+      compress: {}
+
+    security-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+
+    default-chain:
+      chain:
+        middlewares:
+          - gzip
+          - security-headers
+          - rate-limit

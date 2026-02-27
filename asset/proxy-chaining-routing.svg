@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="430" viewBox="0 0 1480 430" role="img" aria-labelledby="title desc">
+  <title id="title">Proxy Chaining with Traefik</title>
+  <desc id="desc">Edge Traefik forwards selected requests to an upstream proxy while routing others directly.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font: 700 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .node { font: 700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .sub { font: 500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #334155; }
+      .box { rx: 14; ry: 14; stroke-width: 2; }
+      .line { stroke: #334155; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .branch { stroke: #334155; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .label { font: 600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2937; }
+    </style>
+  </defs>
+
+  <text x="40" y="42" class="title">Chapter 08: Proxy Chaining</text>
+
+  <rect x="40" y="165" width="170" height="90" class="box" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="125" y="203" text-anchor="middle" class="node">Client</text>
+  <text x="125" y="227" text-anchor="middle" class="sub">Incoming request</text>
+
+  <rect x="280" y="165" width="280" height="90" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="420" y="203" text-anchor="middle" class="node">Edge Traefik</text>
+  <text x="420" y="227" text-anchor="middle" class="sub">Route by Host/Path</text>
+
+  <rect x="760" y="90" width="280" height="86" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="900" y="124" text-anchor="middle" class="node">Upstream Proxy</text>
+  <text x="900" y="148" text-anchor="middle" class="sub">Forward /legacy/*</text>
+
+  <rect x="1160" y="90" width="280" height="86" class="box" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="1300" y="124" text-anchor="middle" class="node">Legacy Backend</text>
+  <text x="1300" y="148" text-anchor="middle" class="sub">Behind upstream proxy</text>
+
+  <rect x="760" y="255" width="280" height="86" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="900" y="289" text-anchor="middle" class="node">api-service</text>
+  <text x="900" y="313" text-anchor="middle" class="sub">Direct route /api/*</text>
+
+  <line x1="210" y1="210" x2="280" y2="210" class="line"/>
+  <line x1="560" y1="197" x2="760" y2="133" class="branch"/>
+  <line x1="560" y1="223" x2="760" y2="298" class="branch"/>
+  <line x1="1040" y1="133" x2="1160" y2="133" class="line"/>
+
+  <text x="590" y="126" class="label">PathPrefix(/legacy)</text>
+  <text x="590" y="294" class="label">PathPrefix(/api)</text>
+
+  <rect x="1120" y="230" width="320" height="160" class="box" fill="#f8fafc" stroke="#64748b"/>
+  <text x="1280" y="265" text-anchor="middle" class="node">Chaining checklist</text>
+  <text x="1145" y="298" class="sub">- Prevent routing loop</text>
+  <text x="1145" y="324" class="sub">- Preserve Host/headers policy</text>
+  <text x="1145" y="350" class="sub">- Set timeout and retry rules</text>
+</svg>

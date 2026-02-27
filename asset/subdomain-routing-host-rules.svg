@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="420" viewBox="0 0 1440 420" role="img" aria-labelledby="title desc">
+  <title id="title">Subdomain Routing with Host Rules</title>
+  <desc id="desc">Traefik routes app, api, and admin subdomains to separate backend services.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font: 700 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .node { font: 700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .sub { font: 500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #334155; }
+      .box { rx: 14; ry: 14; stroke-width: 2; }
+      .line { stroke: #334155; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .branch { stroke: #334155; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .label { font: 600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2937; }
+    </style>
+  </defs>
+
+  <text x="40" y="42" class="title">Chapter 04: Subdomain Routing (Host Rules)</text>
+
+  <rect x="40" y="150" width="180" height="90" class="box" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="130" y="188" text-anchor="middle" class="node">Client</text>
+  <text x="130" y="212" text-anchor="middle" class="sub">DNS resolves domain</text>
+
+  <rect x="300" y="150" width="260" height="90" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="430" y="188" text-anchor="middle" class="node">Traefik Router</text>
+  <text x="430" y="212" text-anchor="middle" class="sub">Match by Host()</text>
+
+  <rect x="760" y="70" width="240" height="78" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="880" y="102" text-anchor="middle" class="node">app-service</text>
+  <text x="880" y="126" text-anchor="middle" class="sub">Host(app.example.com)</text>
+
+  <rect x="760" y="170" width="240" height="78" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="880" y="202" text-anchor="middle" class="node">api-service</text>
+  <text x="880" y="226" text-anchor="middle" class="sub">Host(api.example.com)</text>
+
+  <rect x="760" y="270" width="240" height="78" class="box" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="880" y="302" text-anchor="middle" class="node">admin-service</text>
+  <text x="880" y="326" text-anchor="middle" class="sub">Host(admin.example.com)</text>
+
+  <line x1="220" y1="195" x2="300" y2="195" class="line"/>
+  <line x1="560" y1="188" x2="760" y2="109" class="branch"/>
+  <line x1="560" y1="195" x2="760" y2="209" class="branch"/>
+  <line x1="560" y1="202" x2="760" y2="309" class="branch"/>
+
+  <text x="615" y="130" class="label">Host=app.example.com</text>
+  <text x="615" y="188" class="label">Host=api.example.com</text>
+  <text x="615" y="290" class="label">Host=admin.example.com</text>
+
+  <rect x="1080" y="150" width="320" height="150" class="box" fill="#f8fafc" stroke="#64748b"/>
+  <text x="1240" y="185" text-anchor="middle" class="node">Why this matters</text>
+  <text x="1105" y="218" class="sub">- One entrypoint, multiple domains</text>
+  <text x="1105" y="244" class="sub">- Clear service boundaries</text>
+  <text x="1105" y="270" class="sub">- Easy to scale by subdomain</text>
+</svg>

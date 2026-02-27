@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="430" viewBox="0 0 1440 430" role="img" aria-labelledby="title desc">
+  <title id="title">Path-based Gateway Routing</title>
+  <desc id="desc">Traefik gateway routes requests by path prefixes under a single host.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font: 700 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .node { font: 700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .sub { font: 500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #334155; }
+      .box { rx: 14; ry: 14; stroke-width: 2; }
+      .line { stroke: #334155; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .branch { stroke: #334155; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .label { font: 600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2937; }
+    </style>
+  </defs>
+
+  <text x="40" y="42" class="title">Chapter 06: Path-based Gateway Routing</text>
+
+  <rect x="40" y="165" width="180" height="90" class="box" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="130" y="203" text-anchor="middle" class="node">Client</text>
+  <text x="130" y="227" text-anchor="middle" class="sub">Host: example.com</text>
+
+  <rect x="300" y="165" width="320" height="90" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="460" y="203" text-anchor="middle" class="node">Traefik Gateway</text>
+  <text x="460" y="227" text-anchor="middle" class="sub">Match Path /api /auth /billing</text>
+
+  <rect x="760" y="70" width="280" height="86" class="box" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="900" y="104" text-anchor="middle" class="node">api-service</text>
+  <text x="900" y="128" text-anchor="middle" class="sub">PathPrefix(/api)</text>
+
+  <rect x="760" y="170" width="280" height="86" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="900" y="204" text-anchor="middle" class="node">auth-service</text>
+  <text x="900" y="228" text-anchor="middle" class="sub">PathPrefix(/auth)</text>
+
+  <rect x="760" y="270" width="280" height="86" class="box" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="900" y="304" text-anchor="middle" class="node">billing-service</text>
+  <text x="900" y="328" text-anchor="middle" class="sub">PathPrefix(/billing)</text>
+
+  <line x1="220" y1="210" x2="300" y2="210" class="line"/>
+  <line x1="620" y1="198" x2="760" y2="113" class="branch"/>
+  <line x1="620" y1="210" x2="760" y2="213" class="branch"/>
+  <line x1="620" y1="222" x2="760" y2="313" class="branch"/>
+
+  <text x="640" y="120" class="label">/api/*</text>
+  <text x="640" y="206" class="label">/auth/*</text>
+  <text x="640" y="302" class="label">/billing/*</text>
+
+  <rect x="1100" y="150" width="300" height="170" class="box" fill="#f8fafc" stroke="#64748b"/>
+  <text x="1250" y="185" text-anchor="middle" class="node">Gateway policy zone</text>
+  <text x="1125" y="220" class="sub">- StripPrefix/Rewrite</text>
+  <text x="1125" y="246" class="sub">- Auth and rate limiting</text>
+  <text x="1125" y="272" class="sub">- Access logging</text>
+  <text x="1125" y="298" class="sub">- Unified API boundary</text>
+</svg>
