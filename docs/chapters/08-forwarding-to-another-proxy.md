@@ -143,6 +143,46 @@ http:
 3. chain 전용 경로(`/legacy/*`)를 좁게 유지
 4. 배포 전 루프 테스트 케이스를 필수로 수행
 
+## 프록시 간 재암호화(TLS Bridging)
+
+Path 기반 라우팅과 같은 경우 edge 프록시에서 요청을 한 번 복호화해 `Host`/`Path`를 판단해야 합니다.  
+이러한 경우 다음 프록시(upstream)로 전달할 때는 다시 TLS를 적용해 구간을 보호할 수 있습니다.
+
+흐름:
+1. Client -> Edge: HTTPS(`websecure`)로 수신
+2. Edge: 라우팅 규칙(`Host`, `PathPrefix`) 평가
+3. Edge -> Upstream Proxy: HTTPS로 재암호화해 전달
+
+적용 포인트:
+1. `services.*.loadBalancer.servers.url`을 `https://...`로 선언
+2. `serversTransport`에서 upstream 인증서 검증/전송 정책 설정
+3. 사설 CA 또는 mTLS가 필요하면 `rootCAs`, `certificates`를 함께 선언
+
+예시:
+
+```yaml
+http:
+  serversTransports:
+    upstream-tls:
+      serverName: "upstream-proxy.internal"
+      rootCAs:
+        - "/etc/traefik/certs/upstream-ca.crt"
+      certificates:
+        - certFile: "/etc/traefik/certs/edge-client.crt"
+          keyFile: "/etc/traefik/certs/edge-client.key"
+
+  services:
+    legacy-upstream:
+      loadBalancer:
+        servers:
+          - url: "https://upstream-proxy:8443"
+        serversTransport: upstream-tls
+```
+
+운영 권장:
+1. `insecureSkipVerify`는 임시 디버깅 외에는 사용하지 않는다.
+2. TLS 재암호화를 적용해도 루프 방지 규칙은 그대로 유지한다.
+
 ## 실습 절차
 
 ## 1) chain 라우터 및 upstream 서비스 추가
