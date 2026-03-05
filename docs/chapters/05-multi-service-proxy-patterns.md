@@ -33,28 +33,34 @@
 2. 서비스는 N개 인스턴스
 3. Traefik이 인스턴스 목록을 로드밸런싱
 
-Docker provider 예시:
+File provider 예시:
 
 ```yaml
-services:
-  api:
-    image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(`api.localhost`)
-      - traefik.http.routers.api.entrypoints=web
-      - traefik.http.routers.api.middlewares=default-chain@file
-      - traefik.http.services.api.loadbalancer.server.port=80
+http:
+  routers:
+    api-router:
+      rule: "Host(`api.localhost`)"
+      entryPoints: ["web"]
+      service: api-svc
+      middlewares: ["default-chain"]
+
+  services:
+    api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://api-1:80"
+          - url: "http://api-2:80"
+          - url: "http://api-3:80"
 ```
 
 주의:
-1. 스케일링할 서비스에는 `container_name`을 지정하지 않는 것이 안전합니다.
-2. 정적 `container_name`은 여러 인스턴스 생성과 충돌합니다.
+1. `servers.url` 목록은 실제 백엔드 컨테이너 이름/포트와 정확히 일치해야 합니다.
+2. 인스턴스 수를 바꾸면 `dynamic.yml` 서버 목록도 함께 갱신해야 합니다.
 
 실행:
 
 ```bash
-docker compose -f examples/docker-compose.yml up -d --scale api=3
+docker compose -f examples/docker-compose.yml up -d
 ```
 
 검증:
@@ -88,13 +94,21 @@ done
 
 다중 인스턴스는 "죽은 인스턴스를 빨리 제외"해야 의미가 있습니다.
 
-Traefik HTTP 서비스 헬스체크 라벨 예시:
+Traefik HTTP 서비스 헬스체크 예시:
 
 ```yaml
-labels:
-  - traefik.http.services.api.loadbalancer.healthcheck.path=/health
-  - traefik.http.services.api.loadbalancer.healthcheck.interval=10s
-  - traefik.http.services.api.loadbalancer.healthcheck.timeout=2s
+http:
+  services:
+    api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://api-1:80"
+          - url: "http://api-2:80"
+          - url: "http://api-3:80"
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "2s"
 ```
 
 적용 포인트:
@@ -110,8 +124,12 @@ labels:
 예:
 
 ```yaml
-labels:
-  - traefik.http.services.app.loadbalancer.sticky.cookie=true
+http:
+  services:
+    app-svc:
+      loadBalancer:
+        sticky:
+          cookie: {}
 ```
 
 주의:
@@ -120,19 +138,13 @@ labels:
 
 ## 실습: 다중 서버 프록시 구성 절차
 
-## 1단계: compose에 서비스 추가
+## 1단계: compose에 백엔드 인스턴스 추가
 
-04장 예시 기준으로 `api` 서비스를 추가하고 Host 라우터를 선언합니다.
+`api-1`, `api-2`, `api-3` 컨테이너를 compose에 추가하고 실행합니다.
 
-핵심 라벨:
-1. `traefik.http.routers.api.rule=Host(\`api.localhost\`)`
-2. `traefik.http.services.api.loadbalancer.server.port=80`
+## 2단계: dynamic.yml에 서버 목록 선언
 
-## 2단계: 인스턴스 수 확장
-
-```bash
-docker compose -f examples/docker-compose.yml up -d --scale api=3
-```
+`api-svc.loadBalancer.servers`에 세 인스턴스 URL을 모두 선언합니다.
 
 ## 3단계: 분산 확인
 
@@ -151,7 +163,7 @@ done
 예시:
 
 ```bash
-docker ps --format '{{.Names}}' | grep 'api' | head -n 1 | xargs docker stop
+docker stop api-1
 for i in {1..10}; do
   curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: api.localhost' http://localhost
 done
@@ -180,9 +192,9 @@ docker compose -f examples/docker-compose.yml logs -f traefik
 
 ## 자주 발생하는 실수
 
-1. 스케일링 서비스에 `container_name` 고정
-- 증상: 스케일 명령 실패 또는 일부만 기동
-- 조치: `container_name` 제거
+1. 서버 목록 누락/오탈자
+- 증상: 일부 인스턴스로만 트래픽 고정 또는 502
+- 조치: `services.<name>.loadBalancer.servers` 전체 URL 재확인
 
 2. 도메인 분리 없이 path만으로 모든 서비스를 한 덩어리로 관리
 - 증상: 장애 영향 범위가 커짐
@@ -192,14 +204,14 @@ docker compose -f examples/docker-compose.yml logs -f traefik
 - 증상: 죽은 인스턴스로 트래픽 유입
 - 조치: `/health` 기반 체크를 기본값으로 채택
 
-4. 검증 없이 스케일 수만 증가
+4. 검증 없이 서버 수만 증가
 - 증상: 분산이 제대로 안 되는데도 운영 투입
 - 조치: 반복 `curl`과 Dashboard로 분산/제외 동작 확인
 
 ## 운영 체크리스트
 
 1. 도메인-라우터-서비스 네이밍 규칙이 일관적인가
-2. 서비스별 스케일 기준(최소/최대)이 문서화되어 있는가
+2. 서비스별 최소 인스턴스 수가 문서화되어 있는가
 3. 헬스체크 엔드포인트가 안정적이고 가벼운가
 4. 장애 주입 테스트를 배포 전 수행했는가
 5. 대시보드 공개 범위를 내부 네트워크로 제한했는가

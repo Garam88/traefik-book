@@ -71,66 +71,80 @@ PathPrefix(`/api`)  # /api, /api/users, /api/v1/orders 모두 매칭
 이때 더 구체적인 라우터를 우선시키기 위해 `priority`를 사용합니다.
 
 ```yaml
-- traefik.http.routers.api.rule=Host(`gateway.localhost`) && PathPrefix(`/api`)
-- traefik.http.routers.api.priority=100
+http:
+  routers:
+    gw-api-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api`)"
+      priority: 100
 
-- traefik.http.routers.api-admin.rule=Host(`gateway.localhost`) && PathPrefix(`/api/admin`)
-- traefik.http.routers.api-admin.priority=200
+    gw-api-admin-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api/admin`)"
+      priority: 200
 ```
 
 팀 규칙으로 고정할 것:
 1. 더 구체적인 path가 더 높은 priority
 2. 겹침 가능성이 있으면 priority를 항상 명시
 
-## 실습 구성 예제 (Docker labels)
+## 실습 구성 예제 (File provider)
 
 아래 예시는 단일 도메인 `gateway.localhost`에서 Path 기준으로 분기하는 기본형입니다.
 
 ```yaml
-services:
-  api:
-    image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gw-api.rule=Host(`gateway.localhost`) && PathPrefix(`/api`)
-      - traefik.http.routers.gw-api.entrypoints=web
-      - traefik.http.routers.gw-api.priority=120
-      - traefik.http.routers.gw-api.middlewares=default-chain@file
-      - traefik.http.services.gw-api.loadbalancer.server.port=80
+http:
+  routers:
+    gw-api-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api`)"
+      entryPoints: ["web"]
+      priority: 120
+      service: gw-api-svc
+      middlewares: ["default-chain"]
 
-  auth:
-    image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gw-auth.rule=Host(`gateway.localhost`) && PathPrefix(`/auth`)
-      - traefik.http.routers.gw-auth.entrypoints=web
-      - traefik.http.routers.gw-auth.priority=120
-      - traefik.http.routers.gw-auth.middlewares=default-chain@file
-      - traefik.http.services.gw-auth.loadbalancer.server.port=80
+    gw-auth-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/auth`)"
+      entryPoints: ["web"]
+      priority: 120
+      service: gw-auth-svc
+      middlewares: ["default-chain"]
 
-  billing:
-    image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gw-billing.rule=Host(`gateway.localhost`) && PathPrefix(`/billing`)
-      - traefik.http.routers.gw-billing.entrypoints=web
-      - traefik.http.routers.gw-billing.priority=120
-      - traefik.http.routers.gw-billing.middlewares=default-chain@file
-      - traefik.http.services.gw-billing.loadbalancer.server.port=80
+    gw-billing-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/billing`)"
+      entryPoints: ["web"]
+      priority: 120
+      service: gw-billing-svc
+      middlewares: ["default-chain"]
 
-  admin:
-    image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gw-api-admin.rule=Host(`gateway.localhost`) && PathPrefix(`/api/admin`)
-      - traefik.http.routers.gw-api-admin.entrypoints=web
-      - traefik.http.routers.gw-api-admin.priority=220
-      - traefik.http.routers.gw-api-admin.middlewares=default-chain@file
-      - traefik.http.services.gw-api-admin.loadbalancer.server.port=80
+    gw-api-admin-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api/admin`)"
+      entryPoints: ["web"]
+      priority: 220
+      service: gw-api-admin-svc
+      middlewares: ["default-chain"]
+
+  services:
+    gw-api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://api:80"
+
+    gw-auth-svc:
+      loadBalancer:
+        servers:
+          - url: "http://auth:80"
+
+    gw-billing-svc:
+      loadBalancer:
+        servers:
+          - url: "http://billing:80"
+
+    gw-api-admin-svc:
+      loadBalancer:
+        servers:
+          - url: "http://admin:80"
 ```
 
 참고:
-1. 충돌 테스트를 위해 `gw-api`와 `gw-api-admin`을 함께 포함했습니다.
+1. 충돌 테스트를 위해 `gw-api-router`와 `gw-api-admin-router`를 함께 포함했습니다.
 2. 여기서는 경로 변환(`StripPrefix`/`ReplacePath`)을 아직 다루지 않습니다.
 3. 경로 변환과 정책 적용은 다음 장(07)에서 집중적으로 다룹니다.
 
@@ -138,7 +152,7 @@ services:
 
 ## 1) 서비스 기동
 
-아래 절차는 위 라벨 예시를 `examples/docker-compose.yml`에 반영한 상태를 기준으로 합니다.
+아래 절차는 위 File provider 예시를 `examples/traefik-lab/dynamic/dynamic.yml`에 반영한 상태를 기준으로 합니다.
 
 ```bash
 cd /path/to/traefik-book
@@ -163,26 +177,24 @@ curl -H 'Host: gateway.localhost' http://localhost/billing/ping
 - `http://localhost:8080/dashboard/`
 
 확인 항목:
-1. `gw-api`, `gw-api-admin`, `gw-auth`, `gw-billing` 라우터 존재
+1. `gw-api-router`, `gw-api-admin-router`, `gw-auth-router`, `gw-billing-router` 존재
 2. 각 라우터의 rule/priority가 의도대로 설정
 3. 서비스 연결 대상이 올바른지
 
 ## 4) 충돌 시나리오 테스트
 
 예: `/api` vs `/api/admin` 충돌  
-아래 테스트는 위 예제처럼 `admin` 서비스를 추가한 상태를 전제로 합니다.
+아래 테스트는 `dynamic.yml` 편집 후 파일 저장만으로 재로딩되는 흐름을 전제로 합니다.
 
 ```bash
 # 1) 정상 상태 확인 (admin 라우터가 선택되어야 함)
 curl -s -H 'Host: gateway.localhost' http://localhost/api/admin/users | grep -i hostname
 
-# 2) examples/docker-compose.yml에서
-#    traefik.http.routers.gw-api-admin.priority=220 값을 80으로 수정한 뒤 admin 서비스 재기동
-docker compose -f examples/docker-compose.yml up -d --force-recreate admin
+# 2) dynamic.yml에서
+#    gw-api-admin-router.priority 값을 220 -> 80으로 수정 후 저장
 curl -s -H 'Host: gateway.localhost' http://localhost/api/admin/users | grep -i hostname
 
-# 3) 같은 값을 220으로 원복한 뒤 다시 재기동/재검증
-docker compose -f examples/docker-compose.yml up -d --force-recreate admin
+# 3) 같은 값을 220으로 원복 후 재검증
 curl -s -H 'Host: gateway.localhost' http://localhost/api/admin/users | grep -i hostname
 ```
 
@@ -213,7 +225,7 @@ curl -s -H 'Host: gateway.localhost' http://localhost/api/admin/users | grep -i 
 1. 공개 API prefix를 팀 표준으로 고정한다.
 - `/api`, `/auth`, `/billing`, `/internal` 등
 2. 라우터 네이밍 규칙을 도메인+경로 기준으로 통일한다.
-- `gw-api`, `gw-auth` 같은 명명
+- `gw-api-router`, `gw-auth-router` 같은 명명
 3. 우선순위 정책을 문서화한다.
 - 구체 path가 항상 높은 priority
 4. 신규 경로 추가 시 충돌 테스트를 CI에 포함한다.

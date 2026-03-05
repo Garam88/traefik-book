@@ -72,10 +72,14 @@ command:
 라우터에서 resolver 연결:
 
 ```yaml
-labels:
-  - traefik.http.routers.gw-api.entrypoints=websecure
-  - traefik.http.routers.gw-api.tls=true
-  - traefik.http.routers.gw-api.tls.certresolver=le
+http:
+  routers:
+    gw-api-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api`)"
+      entryPoints: ["websecure"]
+      service: gw-api-svc
+      tls:
+        certResolver: le
 ```
 
 핵심:
@@ -184,9 +188,9 @@ command:
 ## 2) 라우터 TLS 활성화
 
 대상 라우터에 아래를 선언합니다.
-1. `entrypoints=websecure`
-2. `tls=true`
-3. `tls.certresolver=le`
+1. `entryPoints: [\"websecure\"]`
+2. `tls:` 블록 활성화
+3. `tls.certResolver: le`
 
 ## 3) 실행 및 로그 확인
 

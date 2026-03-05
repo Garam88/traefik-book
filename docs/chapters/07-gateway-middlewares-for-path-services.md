@@ -63,11 +63,16 @@ http:
           - "/auth"
 ```
 
-라우터 연결(Docker labels):
+라우터 연결(File provider):
 
 ```yaml
-- traefik.http.routers.gw-auth.rule=Host(`gateway.localhost`) && PathPrefix(`/auth`)
-- traefik.http.routers.gw-auth.middlewares=auth-strip@file,default-chain@file
+http:
+  routers:
+    gw-auth-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/auth`)"
+      entryPoints: ["web"]
+      service: gw-auth-svc
+      middlewares: ["auth-strip", "default-chain"]
 ```
 
 검증:
@@ -118,7 +123,7 @@ http:
 ## 공통 정책 체인 설계
 
 현재 저장소의 기본 정책 체인:
-- `default-chain@file` (`gzip`, `security-headers`, `rate-limit`)
+- `default-chain` (`gzip`, `security-headers`, `rate-limit`)
 
 게이트웨이에서는 아래처럼 "경로별 변환 + 공통 정책"을 결합하는 것이 안전합니다.
 
@@ -142,7 +147,10 @@ http:
 라우터:
 
 ```yaml
-- traefik.http.routers.gw-auth.middlewares=auth-chain@file
+http:
+  routers:
+    gw-auth-router:
+      middlewares: ["auth-chain"]
 ```
 
 ## 라우팅/변환 검증 절차
@@ -187,7 +195,7 @@ docker compose -f examples/docker-compose.yml logs -f traefik
 - 원인: 변환 전/후 경로 기대치 불일치
 - 조치: 백엔드 라우트 표와 게이트웨이 변환 규칙을 1:1 매핑 문서화
 
-4. `middleware ...@file does not exist`
+4. `middleware ... does not exist`
 - 원인: 파일 미로딩 또는 이름 오탈자
 - 조치: `dynamic.yml` 키 이름과 라우터 참조 문자열 일치 확인
 

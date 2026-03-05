@@ -21,18 +21,23 @@
 
 Traefik 라우터는 요청의 Host 헤더를 기준으로 매칭할 수 있습니다.
 
-예시:
+예시(`dynamic.yml`):
 
 ```yaml
-traefik.http.routers.app.rule=Host(`app.localhost`)
-traefik.http.routers.api.rule=Host(`api.localhost`)
-traefik.http.routers.admin.rule=Host(`admin.localhost`)
+http:
+  routers:
+    app-router:
+      rule: "Host(`app.localhost`)"
+    api-router:
+      rule: "Host(`api.localhost`)"
+    admin-router:
+      rule: "Host(`admin.localhost`)"
 ```
 
 중요 포인트:
 1. Host 규칙은 DNS/hosts 해석과 함께 동작한다.
 2. 테스트 시 브라우저 대신 `curl -H 'Host: ...'`로 먼저 사실관계를 확인한다.
-3. 라우터마다 `entrypoints`를 명시해 유입 경계를 고정한다.
+3. 라우터마다 `entryPoints`를 명시해 유입 경계를 고정한다.
 
 ## 설계 패턴: 서브도메인 1개 = 서비스 1개
 
@@ -47,47 +52,52 @@ traefik.http.routers.admin.rule=Host(`admin.localhost`)
 2. 장애 영향 범위를 서브도메인 단위로 분리할 수 있다.
 3. TLS 인증서 정책(SAN 또는 와일드카드)도 일관되게 가져가기 쉽다.
 
-## 실습 구성 예제 (Docker labels)
+## 실습 구성 예제 (File provider)
 
 아래 예시는 현재 실습 compose에 그대로 확장 가능한 형태입니다.  
-핵심은 "서비스별 라우터 이름과 Host 규칙을 분리"하는 것입니다.
+핵심은 "서비스 컨테이너와 라우팅 설정을 분리하고, 라우팅은 `dynamic.yml`에서 관리"하는 것입니다.
 
 ```yaml
-services:
-  app:
-    image: traefik/whoami:v1.10
-    container_name: lab-app
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.app.rule=Host(`app.localhost`)
-      - traefik.http.routers.app.entrypoints=web
-      - traefik.http.routers.app.middlewares=default-chain@file
-      - traefik.http.services.app.loadbalancer.server.port=80
+http:
+  routers:
+    app-router:
+      rule: "Host(`app.localhost`)"
+      entryPoints: ["web"]
+      service: app-svc
+      middlewares: ["default-chain"]
 
-  api:
-    image: traefik/whoami:v1.10
-    container_name: lab-api
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(`api.localhost`)
-      - traefik.http.routers.api.entrypoints=web
-      - traefik.http.routers.api.middlewares=default-chain@file
-      - traefik.http.services.api.loadbalancer.server.port=80
+    api-router:
+      rule: "Host(`api.localhost`)"
+      entryPoints: ["web"]
+      service: api-svc
+      middlewares: ["default-chain"]
 
-  admin:
-    image: traefik/whoami:v1.10
-    container_name: lab-admin
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.admin.rule=Host(`admin.localhost`)
-      - traefik.http.routers.admin.entrypoints=web
-      - traefik.http.routers.admin.middlewares=default-chain@file
-      - traefik.http.services.admin.loadbalancer.server.port=80
+    admin-router:
+      rule: "Host(`admin.localhost`)"
+      entryPoints: ["web"]
+      service: admin-svc
+      middlewares: ["default-chain"]
+
+  services:
+    app-svc:
+      loadBalancer:
+        servers:
+          - url: "http://app:80"
+
+    api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://api:80"
+
+    admin-svc:
+      loadBalancer:
+        servers:
+          - url: "http://admin:80"
 ```
 
 참고:
-1. `default-chain@file`은 03장에서 구성한 File provider 미들웨어 체인을 재사용합니다.
-2. 서비스 포트가 80이 아니면 `loadbalancer.server.port`를 실제 값으로 맞춰야 합니다.
+1. `default-chain`은 03장에서 구성한 File provider 미들웨어 체인입니다.
+2. 서비스 포트가 80이 아니면 각 `servers.url` 포트를 실제 값으로 맞춰야 합니다.
 
 ## 로컬 도메인 준비
 
@@ -125,9 +135,9 @@ curl -H 'Host: admin.localhost' http://localhost
 - `http://localhost:8080/dashboard/`
 
 확인 항목:
-1. `app`, `api`, `admin` 라우터가 각각 존재하는지
+1. `app-router`, `api-router`, `admin-router`가 각각 존재하는지
 2. 각 라우터가 예상 서비스에 연결되는지
-3. 미들웨어(`default-chain@file`)가 적용됐는지
+3. 미들웨어(`default-chain`)가 적용됐는지
 
 ## 운영에서 자주 겪는 문제
 
@@ -136,15 +146,15 @@ curl -H 'Host: admin.localhost' http://localhost
 - 조치: `curl -H 'Host: ...'`로 재검증, 도메인 해석 확인
 
 2. 특정 서브도메인만 동작 안 함
-- 원인: 해당 서비스의 `traefik.enable` 누락 또는 라벨 오탈자
-- 조치: 컨테이너 라벨 재확인 후 재기동
+- 원인: 해당 라우터 rule 오탈자 또는 서비스 이름 불일치
+- 조치: `dynamic.yml`의 router/service 키 이름 재확인
 
 3. 라우터는 보이는데 백엔드 연결 실패
-- 원인: `loadbalancer.server.port` 불일치
-- 조치: 서비스 내부 listen 포트와 라벨 값 일치 여부 확인
+- 원인: `servers.url` 포트/호스트 불일치
+- 조치: 서비스 내부 listen 포트와 `url` 일치 여부 확인
 
 4. HTTP는 되는데 HTTPS에서만 실패
-- 원인: `entrypoints`/TLS 설정 불일치
+- 원인: `entryPoints`/TLS 설정 불일치
 - 조치: 현재 장에서는 `web` 기준으로 고정하고, HTTPS는 10장에서 확장
 
 ## 운영 적용 시 가이드

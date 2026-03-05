@@ -66,29 +66,41 @@ PathPrefix(`/api/admin`)  priority=200
 
 ## 4) 복붙 템플릿
 
-## A. 서브도메인 분기 (Docker labels)
+## A. 서브도메인 분기 (File provider)
 
 ```yaml
-labels:
-  - traefik.enable=true
-  - traefik.http.routers.app-router.rule=Host(`app.example.com`)
-  - traefik.http.routers.app-router.entrypoints=web
-  - traefik.http.routers.app-router.service=app-svc
-  - traefik.http.routers.app-router.middlewares=default-chain@file
-  - traefik.http.services.app-svc.loadbalancer.server.port=8080
+http:
+  routers:
+    app-router:
+      rule: "Host(`app.example.com`)"
+      entryPoints: ["web"]
+      service: app-svc
+      middlewares: ["default-chain"]
+
+  services:
+    app-svc:
+      loadBalancer:
+        servers:
+          - url: "http://app:8080"
 ```
 
-## B. Path 게이트웨이 분기 (Docker labels)
+## B. Path 게이트웨이 분기 (File provider)
 
 ```yaml
-labels:
-  - traefik.enable=true
-  - traefik.http.routers.gw-api-router.rule=Host(`gateway.example.com`) && PathPrefix(`/api`)
-  - traefik.http.routers.gw-api-router.entrypoints=web
-  - traefik.http.routers.gw-api-router.priority=120
-  - traefik.http.routers.gw-api-router.service=gw-api-svc
-  - traefik.http.routers.gw-api-router.middlewares=gw-api-chain@file
-  - traefik.http.services.gw-api-svc.loadbalancer.server.port=8080
+http:
+  routers:
+    gw-api-router:
+      rule: "Host(`gateway.example.com`) && PathPrefix(`/api`)"
+      entryPoints: ["web"]
+      priority: 120
+      service: gw-api-svc
+      middlewares: ["gw-api-chain"]
+
+  services:
+    gw-api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://api:8080"
 ```
 
 ## C. Proxy Chaining (File provider)
@@ -155,10 +167,14 @@ command:
 라우터 TLS 연결:
 
 ```yaml
-labels:
-  - traefik.http.routers.gw-api-router.entrypoints=websecure
-  - traefik.http.routers.gw-api-router.tls=true
-  - traefik.http.routers.gw-api-router.tls.certresolver=le
+http:
+  routers:
+    gw-api-router:
+      rule: "Host(`gateway.example.com`) && PathPrefix(`/api`)"
+      entryPoints: ["websecure"]
+      service: gw-api-svc
+      tls:
+        certResolver: le
 ```
 
 ## 5) 검증 명령 모음

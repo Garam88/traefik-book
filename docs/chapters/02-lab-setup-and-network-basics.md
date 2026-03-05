@@ -37,7 +37,7 @@ curl --version
 
 핵심 서비스:
 1. `traefik`  
-포트 `80`, `443`, `8080` 노출, Docker/File provider 활성화
+포트 `80`, `443`, `8080` 노출, File provider 활성화
 2. `whoami`  
 `Host(whoami.localhost)` 규칙으로 라우팅되는 테스트 백엔드
 

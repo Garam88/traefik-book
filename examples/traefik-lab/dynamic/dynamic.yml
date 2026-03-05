@@ -1,4 +1,19 @@
 http:
+  routers:
+    whoami-router:
+      rule: "Host(`whoami.localhost`)"
+      entryPoints:
+        - web
+      service: whoami-svc
+      middlewares:
+        - default-chain
+
+  services:
+    whoami-svc:
+      loadBalancer:
+        servers:
+          - url: "http://whoami:80"
+
   middlewares:
     gzip:
       compress: {}

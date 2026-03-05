@@ -168,16 +168,22 @@ http:
           - security-headers-strict
 ```
 
-라우터 적용 예시(Docker labels):
+라우터 적용 예시(File provider):
 
 ```yaml
-# public route
-- traefik.http.routers.gw-api.rule=Host(`gateway.localhost`) && PathPrefix(`/api`)
-- traefik.http.routers.gw-api.middlewares=public-chain@file
+http:
+  routers:
+    gw-api-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api`)"
+      entryPoints: ["web"]
+      service: gw-api-svc
+      middlewares: ["public-chain"]
 
-# protected route
-- traefik.http.routers.gw-admin.rule=Host(`gateway.localhost`) && PathPrefix(`/admin`)
-- traefik.http.routers.gw-admin.middlewares=internal-chain@file
+    gw-admin-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/admin`)"
+      entryPoints: ["web"]
+      service: gw-admin-svc
+      middlewares: ["internal-chain"]
 ```
 
 ## 실습 절차
@@ -221,7 +227,7 @@ done | sort | uniq -c
 
 1. 인증 미들웨어가 적용되지 않음
 - 원인: 라우터에 체인 연결 누락
-- 조치: `...routers.<name>.middlewares=` 라벨/설정 확인
+- 조치: `dynamic.yml`의 `routers.<name>.middlewares` 설정 확인
 
 2. 내부 경로가 외부에서도 열림
 - 원인: IP allow list 미적용 또는 잘못된 source range

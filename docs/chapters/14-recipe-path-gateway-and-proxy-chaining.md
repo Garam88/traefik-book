@@ -35,11 +35,11 @@
 
 | Path | Router | Service | Type | Priority | Middleware |
 |---|---|---|---|---|---|
-| `/api` | `gw-api-router` | `gw-api-svc` | direct | 120 | `api-chain@file` |
-| `/auth` | `gw-auth-router` | `gw-auth-svc` | direct | 120 | `auth-chain@file` |
-| `/billing` | `gw-billing-router` | `gw-billing-svc` | direct | 120 | `billing-chain@file` |
-| `/legacy` | `gw-legacy-router` | `gw-legacy-upstream` | chained | 300 | `legacy-chain@file` |
-| `/api/admin` | `gw-api-admin-router` | `gw-admin-svc` | direct | 220 | `admin-chain@file` |
+| `/api` | `gw-api-router` | `gw-api-svc` | direct | 120 | `api-chain` |
+| `/auth` | `gw-auth-router` | `gw-auth-svc` | direct | 120 | `auth-chain` |
+| `/billing` | `gw-billing-router` | `gw-billing-svc` | direct | 120 | `billing-chain` |
+| `/legacy` | `gw-legacy-router` | `gw-legacy-upstream` | chained | 300 | `legacy-chain` |
+| `/api/admin` | `gw-api-admin-router` | `gw-admin-svc` | direct | 220 | `admin-chain` |
 
 핵심:
 1. 체이닝 경로(`/legacy`)는 높은 `priority`로 명시
@@ -55,14 +55,19 @@
 예시:
 
 ```yaml
-- traefik.http.routers.gw-api-router.rule=Host(`gateway.localhost`) && PathPrefix(`/api`)
-- traefik.http.routers.gw-api-router.priority=120
+http:
+  routers:
+    gw-api-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api`)"
+      priority: 120
 
-- traefik.http.routers.gw-api-admin-router.rule=Host(`gateway.localhost`) && PathPrefix(`/api/admin`)
-- traefik.http.routers.gw-api-admin-router.priority=220
+    gw-api-admin-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api/admin`)"
+      priority: 220
 
-- traefik.http.routers.gw-legacy-router.rule=Host(`gateway.localhost`) && PathPrefix(`/legacy`)
-- traefik.http.routers.gw-legacy-router.priority=300
+    gw-legacy-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/legacy`)"
+      priority: 300
 ```
 
 ## 3단계: Compose 서비스 구성 예시
@@ -74,8 +79,6 @@ services:
   traefik:
     image: traefik:v3.0
     command:
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
       - --providers.file.directory=/etc/traefik/dynamic
       - --providers.file.watch=true
       - --entrypoints.web.address=:80
@@ -86,69 +89,71 @@ services:
       - "80:80"
       - "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-lab/dynamic:/etc/traefik/dynamic:ro
 
   api:
     image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gw-api-router.rule=Host(`gateway.localhost`) && PathPrefix(`/api`)
-      - traefik.http.routers.gw-api-router.entrypoints=web
-      - traefik.http.routers.gw-api-router.priority=120
-      - traefik.http.routers.gw-api-router.service=gw-api-svc
-      - traefik.http.routers.gw-api-router.middlewares=api-chain@file
-      - traefik.http.services.gw-api-svc.loadbalancer.server.port=80
 
   auth:
     image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gw-auth-router.rule=Host(`gateway.localhost`) && PathPrefix(`/auth`)
-      - traefik.http.routers.gw-auth-router.entrypoints=web
-      - traefik.http.routers.gw-auth-router.priority=120
-      - traefik.http.routers.gw-auth-router.service=gw-auth-svc
-      - traefik.http.routers.gw-auth-router.middlewares=auth-chain@file
-      - traefik.http.services.gw-auth-svc.loadbalancer.server.port=80
 
   billing:
     image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gw-billing-router.rule=Host(`gateway.localhost`) && PathPrefix(`/billing`)
-      - traefik.http.routers.gw-billing-router.entrypoints=web
-      - traefik.http.routers.gw-billing-router.priority=120
-      - traefik.http.routers.gw-billing-router.service=gw-billing-svc
-      - traefik.http.routers.gw-billing-router.middlewares=billing-chain@file
-      - traefik.http.services.gw-billing-svc.loadbalancer.server.port=80
 
   admin:
     image: traefik/whoami:v1.10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gw-api-admin-router.rule=Host(`gateway.localhost`) && PathPrefix(`/api/admin`)
-      - traefik.http.routers.gw-api-admin-router.entrypoints=web
-      - traefik.http.routers.gw-api-admin-router.priority=220
-      - traefik.http.routers.gw-api-admin-router.service=gw-admin-svc
-      - traefik.http.routers.gw-api-admin-router.middlewares=admin-chain@file
-      - traefik.http.services.gw-admin-svc.loadbalancer.server.port=80
 
   upstream-proxy:
     image: traefik/whoami:v1.10
-    container_name: upstream-proxy
 ```
 
 설명:
-1. direct 경로는 Docker labels로 구성
-2. chain 경로는 File provider에서 upstream service로 연결
+1. 라우팅 규칙은 compose 라벨이 아니라 File provider에서 관리
+2. direct/chain 경로 모두 `dynamic.yml`에서 선언
 3. 실습 단순화를 위해 `upstream-proxy`를 단일 서비스로 두었고, 실전에서는 이 프록시가 `legacy-backend`로 전달합니다.
 
-## 4단계: File provider에 체이닝 규칙 추가
+## 4단계: File provider에 라우팅/체이닝 규칙 추가
 
 `examples/traefik-lab/dynamic/dynamic.yml` 예시:
 
 ```yaml
 http:
+  routers:
+    gw-api-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api`)"
+      entryPoints: ["web"]
+      service: gw-api-svc
+      middlewares: ["api-chain"]
+      priority: 120
+
+    gw-auth-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/auth`)"
+      entryPoints: ["web"]
+      service: gw-auth-svc
+      middlewares: ["auth-chain"]
+      priority: 120
+
+    gw-billing-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/billing`)"
+      entryPoints: ["web"]
+      service: gw-billing-svc
+      middlewares: ["billing-chain"]
+      priority: 120
+
+    gw-api-admin-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/api/admin`)"
+      entryPoints: ["web"]
+      service: gw-admin-svc
+      middlewares: ["admin-chain"]
+      priority: 220
+
+    gw-legacy-router:
+      rule: "Host(`gateway.localhost`) && PathPrefix(`/legacy`)"
+      entryPoints: ["web"]
+      service: gw-legacy-upstream
+      middlewares: ["legacy-chain"]
+      priority: 300
+
   middlewares:
     api-strip:
       stripPrefix:
@@ -195,15 +200,27 @@ http:
       chain:
         middlewares: ["legacy-strip", "legacy-retry", "default-chain"]
 
-  routers:
-    gw-legacy-router:
-      rule: "Host(`gateway.localhost`) && PathPrefix(`/legacy`)"
-      entryPoints: ["web"]
-      service: gw-legacy-upstream
-      middlewares: ["legacy-chain"]
-      priority: 300
-
   services:
+    gw-api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://api:80"
+
+    gw-auth-svc:
+      loadBalancer:
+        servers:
+          - url: "http://auth:80"
+
+    gw-billing-svc:
+      loadBalancer:
+        servers:
+          - url: "http://billing:80"
+
+    gw-admin-svc:
+      loadBalancer:
+        servers:
+          - url: "http://admin:80"
+
     gw-legacy-upstream:
       loadBalancer:
         servers:
@@ -225,7 +242,7 @@ http:
 
 ```bash
 cd /path/to/traefik-book
-docker compose -f examples/docker-compose.yml up -d --scale api=2 --scale auth=2 --scale billing=2
+docker compose -f examples/docker-compose.yml up -d
 ```
 
 ## 7단계: 기능 검증
@@ -283,7 +300,7 @@ curl -i -H 'Host: gateway.localhost' http://localhost/api/health
 
 ## 시나리오 B: priority 누락
 
-1. `/api/admin` 라우터 priority를 제거
+1. `gw-api-admin-router.priority`를 제거 또는 낮춤
 2. `/api/admin/*` 요청 재검증
 3. 잘못된 매칭 발생 여부 확인 후 priority 복원
 
@@ -308,7 +325,7 @@ curl -i -H 'Host: gateway.localhost' http://localhost/api/health
 ## 최종 산출물 체크리스트
 
 1. Path 라우팅 명세표(경로/우선순위/대상)
-2. direct 라우터 라벨 구성
+2. direct 라우터/서비스 동적 설정
 3. chain 라우터 + upstream 서비스(dynamic.yml)
 4. 루프 방지 규칙 문서
 5. 검증/장애주입 결과 로그

@@ -82,7 +82,7 @@ curl -H 'Host: whoami.localhost' http://localhost
 
 각 챕터는 같은 루프로 진행합니다.
 1. 요구사항을 규칙(Host/Path/priority)로 변환
-2. Traefik 설정 작성(라벨 또는 파일)
+2. Traefik 설정 작성(File provider 중심)
 3. `curl`로 성공 케이스 검증
 4. 실패 케이스(충돌/미스매치/루프) 재현 후 수정
 5. 운영 체크리스트 반영
